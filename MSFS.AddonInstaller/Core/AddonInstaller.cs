@@ -10,16 +10,37 @@ namespace MSFS.AddonInstaller.Core
             var addonStopwatch = System.Diagnostics.Stopwatch.StartNew();
 
             string sourcePath = addon.SourcePath;
-            string tempPath = string.Empty;
+            InstallProgress? lastProgress = null;
 
-            // Extract archive if needed
+            // ============================
+            // CASE 1: ARCHIVE (STREAMING)
+            // ============================
             if (!addon.IsDirectory)
             {
-                tempPath = ArchiveExtractor.ExtractToTemp(addon.SourcePath);
-                sourcePath = AddonContentResolver.ResolveAddonRoot(tempPath);
+                Console.WriteLine("   Installing...");
+
+                var result = ArchiveExtractor.InstallFromArchiveStreaming(
+                    addon.SourcePath,
+                    communityPath,
+                    progress =>
+                    {
+                        lastProgress = progress;
+                        DrawProgressBar(progress);
+                    }
+                );
+
+                Console.WriteLine();
+                Console.WriteLine(
+                    $"Installation completed in {result.Duration:mm\\:ss}"
+                );
+                Console.WriteLine();
+
+                return result;
             }
 
-            // Detect addon type
+            // ============================
+            // CASE 2: DIRECTORY
+            // ============================
             addon.Type = AddonTypeDetector.Detect(sourcePath);
 
             var targetPath = Path.Combine(
@@ -27,7 +48,6 @@ namespace MSFS.AddonInstaller.Core
                 Path.GetFileName(sourcePath)
             );
 
-            // Skip if already installed
             if (Directory.Exists(targetPath))
             {
                 Console.WriteLine("   Already installed - skipped.");
@@ -35,8 +55,6 @@ namespace MSFS.AddonInstaller.Core
             }
 
             Console.WriteLine($"   {addon.Type}");
-
-            InstallProgress? lastProgress = null;
 
             FileCopyHelper.CopyDirectory(
                 sourcePath,
@@ -48,36 +66,18 @@ namespace MSFS.AddonInstaller.Core
                 }
             );
 
-            if (!string.IsNullOrEmpty(tempPath))
-            {
-                Directory.Delete(tempPath, true);
-            }
-
-            Console.WriteLine();
-
-            if (lastProgress != null)
-            {
-                Console.WriteLine(
-                    $"Installation completed in {lastProgress.Elapsed:mm\\:ss}"
-                );
-            }
-            else
-            {
-                Console.WriteLine("Installation completed.");
-            }
-
-            Console.WriteLine();
-
-            long sizeBytes = Directory
-                .EnumerateFiles(targetPath, "*", SearchOption.AllDirectories)
-                .Sum(f => new FileInfo(f).Length);
-
             addonStopwatch.Stop();
+
+            Console.WriteLine();
+            Console.WriteLine(
+                $"Installation completed in {addonStopwatch.Elapsed:mm\\:ss}"
+            );
+            Console.WriteLine();
 
             return new InstallResult
             {
                 Name = Path.GetFileName(sourcePath),
-                SizeBytes = sizeBytes,
+                SizeBytes = lastProgress?.TotalBytes ?? 0,
                 Duration = addonStopwatch.Elapsed
             };
         }
