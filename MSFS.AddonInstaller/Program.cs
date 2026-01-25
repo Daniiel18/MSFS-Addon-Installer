@@ -7,15 +7,15 @@ try
     var installation = MsfsDetector.Detect();
     var addons = AddonScanner.Scan(args);
 
-    Console.WriteLine("MSFS detectado:");
     Console.WriteLine($"Community: {installation.CommunityPath}");
     Console.WriteLine();
 
-    Console.WriteLine("Addons detectados:");
     int index = 1;
     foreach (var addon in addons)
     {
-        Console.WriteLine($"{index++}. {addon.Name}");
+        Console.WriteLine($"{index}. {addon.Name}");
+        AddonInstaller.Install(addon, installation.CommunityPath);
+        index++;
     }
 }
 catch (Exception ex)
@@ -25,6 +25,5 @@ catch (Exception ex)
     Console.ResetColor();
 }
 
-Console.WriteLine();
-Console.WriteLine("Presiona cualquier tecla para salir...");
+Console.WriteLine("Proceso finalizado. Presiona cualquier tecla para salir...");
 Console.ReadKey();
