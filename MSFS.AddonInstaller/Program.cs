@@ -16,6 +16,7 @@ try
     {
         Console.WriteLine($"{index}. {addon.Name}");
         AddonInstaller.Install(addon, installation.CommunityPath);
+        Console.WriteLine();
         index++;
     }
 }
@@ -26,5 +27,5 @@ catch (Exception ex)
     Console.ResetColor();
 }
 
-Console.WriteLine("Proceso finalizado. Presiona cualquier tecla para salir...");
+Console.WriteLine("Process completed. Press any key to exit...");
 Console.ReadKey();

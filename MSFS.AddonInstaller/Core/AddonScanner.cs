@@ -8,7 +8,7 @@ namespace MSFS.AddonInstaller.Core
         {
             if (args.Length == 0)
                 throw new ArgumentException(
-                    "No se detectaron addons. Arrastra uno o más archivos o carpetas al ejecutable."
+                "No addons detected. Drag and drop one or more files or folders onto the application."
                 );
 
             var addons = new List<Addon>();

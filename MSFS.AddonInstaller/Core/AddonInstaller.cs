@@ -16,9 +16,11 @@ namespace MSFS.AddonInstaller.Core
                 sourcePath = AddonContentResolver.ResolveAddonRoot(tempPath);
             }
 
+            addon.Type = AddonTypeDetector.Detect(sourcePath);
+
             var targetPath = Path.Combine(communityPath, Path.GetFileName(sourcePath));
 
-            Console.WriteLine($"Instalando: {Path.GetFileName(sourcePath)}");
+            Console.WriteLine($"   {addon.Type}");
 
             FileCopyHelper.CopyDirectory(
                 sourcePath,
@@ -32,20 +34,20 @@ namespace MSFS.AddonInstaller.Core
             }
 
             Console.WriteLine();
-            Console.WriteLine("Instalación completada.");
+            Console.WriteLine("Installation completed.");
             Console.WriteLine();
         }
 
         private static void DrawProgressBar(InstallProgress progress)
         {
-            const int barWidth = 30;
+            const int barWidth = 25;
 
             var filledBars = (int)(progress.Percentage / 100 * barWidth);
             var bar = new string('#', filledBars).PadRight(barWidth, '-');
 
-            Console.CursorLeft = 0;
+            Console.CursorLeft = 3;
             Console.Write(
-                $"[{bar}] {progress.Percentage:0.0}% ETA: {progress.Eta:mm\\:ss}"
+                $"{bar} {progress.Percentage:0}% ETA: {progress.Eta:mm\\:ss}"
             );
         }
     }
