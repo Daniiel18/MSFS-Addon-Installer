@@ -21,23 +21,25 @@ namespace MSFS.AddonInstaller.Core
                     {
                         Name = Path.GetFileName(path),
                         SourcePath = path,
-                        IsZip = false
+                        IsDirectory = true,
+                        Extension = string.Empty
                     });
                 }
-                else if (File.Exists(path) && Path.GetExtension(path).Equals(".zip", StringComparison.OrdinalIgnoreCase))
+                else if (File.Exists(path))
                 {
                     addons.Add(new Addon
                     {
                         Name = Path.GetFileNameWithoutExtension(path),
                         SourcePath = path,
-                        IsZip = true
+                        IsDirectory = false,
+                        Extension = Path.GetExtension(path)
                     });
                 }
             }
 
             if (addons.Count == 0)
                 throw new InvalidOperationException(
-                    "Los archivos proporcionados no son addons válidos."
+                    "No se pudieron procesar los elementos proporcionados."
                 );
 
             return addons;
