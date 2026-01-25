@@ -1,12 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace MSFS.AddonInstaller.Models
+﻿namespace MSFS.AddonInstaller.Models
 {
-    internal class MsfsInstallation
+    public class MsfsInstallation
     {
+        public string SimulatorVersion { get; init; } = string.Empty;
+        public string InstalledPackagesPath { get; init; } = string.Empty;
+        public string CommunityPath =>
+            Path.Combine(InstalledPackagesPath, "Community");
     }
 }
