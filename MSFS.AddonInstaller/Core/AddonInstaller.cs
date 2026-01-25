@@ -7,25 +7,29 @@ namespace MSFS.AddonInstaller.Core
     {
         public static void Install(Addon addon, string communityPath)
         {
+            string sourcePath = addon.SourcePath;
+            string tempPath = string.Empty;
+
             if (!addon.IsDirectory)
             {
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine($"Saltando {addon.Name} ({addon.Extension}) – extracción no implementada aún.");
-                Console.ResetColor();
-                return;
+                tempPath = ArchiveExtractor.ExtractToTemp(addon.SourcePath);
+                sourcePath = AddonContentResolver.ResolveAddonRoot(tempPath);
             }
 
-            var targetPath = Path.Combine(communityPath, addon.Name);
+            var targetPath = Path.Combine(communityPath, Path.GetFileName(sourcePath));
 
-            Console.WriteLine($"Instalando: {addon.Name}");
+            Console.WriteLine($"Instalando: {Path.GetFileName(sourcePath)}");
 
             FileCopyHelper.CopyDirectory(
-                addon.SourcePath,
+                sourcePath,
                 targetPath,
-                progress =>
-                {
-                    DrawProgressBar(progress);
-                });
+                DrawProgressBar
+            );
+
+            if (!string.IsNullOrEmpty(tempPath))
+            {
+                Directory.Delete(tempPath, true);
+            }
 
             Console.WriteLine();
             Console.WriteLine("Instalación completada.");

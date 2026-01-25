@@ -2,13 +2,14 @@
 
 Console.Title = "MSFS Addon Installer";
 
+Console.WriteLine("MSFS Addon Installer");
+Console.WriteLine("--------------------");
+Console.WriteLine();
+
 try
 {
     var installation = MsfsDetector.Detect();
     var addons = AddonScanner.Scan(args);
-
-    Console.WriteLine($"Community: {installation.CommunityPath}");
-    Console.WriteLine();
 
     int index = 1;
     foreach (var addon in addons)
