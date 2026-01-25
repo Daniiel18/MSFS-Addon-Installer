@@ -1,10 +1,17 @@
 ﻿using MSFS.AddonInstaller.Core;
+using MSFS.AddonInstaller.Models;
+using System.Diagnostics;
+using MSFS.AddonInstaller.Utils;
+
 
 Console.Title = "MSFS Addon Installer";
 
 Console.WriteLine("MSFS Addon Installer");
 Console.WriteLine("--------------------");
 Console.WriteLine();
+
+var installResults = new List<InstallResult>();
+var totalStopwatch = Stopwatch.StartNew();
 
 try
 {
@@ -15,7 +22,17 @@ try
     foreach (var addon in addons)
     {
         Console.WriteLine($"{index}. {addon.Name}");
-        AddonInstaller.Install(addon, installation.CommunityPath);
+
+        var result = AddonInstaller.Install(
+            addon,
+            installation.CommunityPath
+        );
+
+        if (result != null)
+        {
+            installResults.Add(result);
+        }
+
         Console.WriteLine();
         index++;
     }
@@ -27,5 +44,33 @@ catch (Exception ex)
     Console.ResetColor();
 }
 
-Console.WriteLine("Process completed. Press any key to exit...");
+totalStopwatch.Stop();
+
+// ===== FINAL SUMMARY =====
+Console.Clear();
+
+Console.WriteLine("MSFS Addon Installer - Summary");
+Console.WriteLine("------------------------------");
+Console.WriteLine();
+
+Console.WriteLine($"Add-ons installed: {installResults.Count}");
+Console.WriteLine();
+
+int summaryIndex = 1;
+foreach (var result in installResults)
+{
+    Console.WriteLine(
+    $"   Size: {SizeFormatter.Format(result.SizeBytes)}"
+    );
+    Console.WriteLine($"   Time: {result.Duration:mm\\:ss}");
+    Console.WriteLine();
+
+    summaryIndex++;
+}
+
+Console.WriteLine(
+    $"Total installation time: {totalStopwatch.Elapsed:mm\\:ss}"
+);
+Console.WriteLine();
+Console.WriteLine("Press any key to exit...");
 Console.ReadKey();

@@ -1,5 +1,7 @@
 ﻿using MSFS.AddonInstaller.Models;
 using System.Text.RegularExpressions;
+using System.Text.Json;
+
 
 namespace MSFS.AddonInstaller.Core
 {
@@ -10,6 +12,31 @@ namespace MSFS.AddonInstaller.Core
 
         public static AddonType Detect(string addonRoot)
         {
+            // 0. MANIFEST.JSON (fuente oficial MSFS)
+            var manifestPath = Path.Combine(addonRoot, "manifest.json");
+
+            if (File.Exists(manifestPath))
+            {
+                try
+                {
+                    using var doc = JsonDocument.Parse(File.ReadAllText(manifestPath));
+
+                    if (doc.RootElement.TryGetProperty("content_type", out var contentType))
+                    {
+                        return contentType.GetString()?.ToUpperInvariant() switch
+                        {
+                            "SCENERY" => AddonType.Scenery,
+                            "AIRCRAFT" => AddonType.Aircraft,
+                            "LIVERY" => AddonType.Livery,
+                            "LIBRARY" => AddonType.Library,
+                            "MISC" => AddonType.Library,
+                            _ => AddonType.Unknown
+                        };
+                    }
+                }
+                catch { }
+            }
+
             var simObjectsAircraft =
                 Path.Combine(addonRoot, "SimObjects", "Airplanes");
 
@@ -45,7 +72,7 @@ namespace MSFS.AddonInstaller.Core
                 }
             }
 
-            // 3. SCENERY (estructura canónica, O(1))
+            // 3. SCENERY
             if (Directory.Exists(sceneryWorldScenery))
                 return AddonType.Scenery;
 
@@ -54,7 +81,6 @@ namespace MSFS.AddonInstaller.Core
                 Directory.Exists(Path.Combine(addonRoot, "scenery")))
                 return AddonType.Library;
 
-            // 5. UNKNOWN
             return AddonType.Unknown;
         }
     }
