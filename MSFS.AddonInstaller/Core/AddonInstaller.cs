@@ -20,6 +20,12 @@ namespace MSFS.AddonInstaller.Core
 
             var targetPath = Path.Combine(communityPath, Path.GetFileName(sourcePath));
 
+            if (Directory.Exists(targetPath))
+            {
+                Console.WriteLine("   Already installed – skipped.");
+                return;
+            }
+
             Console.WriteLine($"   {addon.Type}");
 
             FileCopyHelper.CopyDirectory(
