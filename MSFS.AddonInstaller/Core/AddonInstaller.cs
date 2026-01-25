@@ -51,9 +51,13 @@ namespace MSFS.AddonInstaller.Core
             var filledBars = (int)(progress.Percentage / 100 * barWidth);
             var bar = new string('#', filledBars).PadRight(barWidth, '-');
 
+            var etaText = progress.Eta.HasValue
+                ? progress.Eta.Value.ToString(@"mm\:ss")
+                : "--:--";
+
             Console.CursorLeft = 3;
             Console.Write(
-                $"{bar} {progress.Percentage:0}% ETA: {progress.Eta:mm\\:ss}"
+                $"{bar} {progress.Percentage:0}% ETA: {etaText}"
             );
         }
     }

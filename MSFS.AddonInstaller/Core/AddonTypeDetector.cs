@@ -10,27 +10,32 @@ namespace MSFS.AddonInstaller.Core
 
         public static AddonType Detect(string addonRoot)
         {
-            var simObjectsPath = Path.Combine(addonRoot, "SimObjects", "Airplanes");
-            var sceneryPath = Path.Combine(addonRoot, "scenery");
-            var modelLibPath = Path.Combine(addonRoot, "modelLib");
+            var simObjectsAircraft =
+                Path.Combine(addonRoot, "SimObjects", "Airplanes");
 
-            // 1. LIVERY (highest priority)
-            if (Directory.Exists(simObjectsPath))
+            var sceneryWorldScenery =
+                Path.Combine(addonRoot, "scenery", "world", "scenery");
+
+            var modelLib =
+                Path.Combine(addonRoot, "modelLib");
+
+            // 1. LIVERY
+            if (Directory.Exists(simObjectsAircraft))
             {
-                foreach (var aircraft in Directory.GetDirectories(simObjectsPath))
+                foreach (var aircraft in Directory.GetDirectories(simObjectsAircraft))
                 {
-                    var textures = Directory.GetDirectories(aircraft, "texture*", SearchOption.TopDirectoryOnly);
+                    var textures = Directory.GetDirectories(aircraft, "texture*");
                     var modelCfg = Path.Combine(aircraft, "model.cfg");
 
-                    if (textures.Any() && !File.Exists(modelCfg))
+                    if (textures.Length > 0 && !File.Exists(modelCfg))
                         return AddonType.Livery;
                 }
             }
 
             // 2. AIRCRAFT
-            if (Directory.Exists(simObjectsPath))
+            if (Directory.Exists(simObjectsAircraft))
             {
-                foreach (var aircraft in Directory.GetDirectories(simObjectsPath))
+                foreach (var aircraft in Directory.GetDirectories(simObjectsAircraft))
                 {
                     if (File.Exists(Path.Combine(aircraft, "aircraft.cfg")) &&
                         File.Exists(Path.Combine(aircraft, "model.cfg")))
@@ -40,25 +45,16 @@ namespace MSFS.AddonInstaller.Core
                 }
             }
 
-            // 3. AIRPORT SCENERY (VERY STRICT)
-            if (Directory.Exists(sceneryPath))
-            {
-                var files = Directory.GetFiles(sceneryPath, "*.*", SearchOption.AllDirectories);
-
-                foreach (var file in files)
-                {
-                    var name = Path.GetFileNameWithoutExtension(file);
-
-                    // Airport BGLs almost always include ICAO codes
-                    if (IcaoRegex.IsMatch(name))
-                        return AddonType.Scenery;
-                }
-            }
+            // 3. SCENERY (estructura canónica, O(1))
+            if (Directory.Exists(sceneryWorldScenery))
+                return AddonType.Scenery;
 
             // 4. LIBRARY / MOD
-            if (Directory.Exists(modelLibPath) || Directory.Exists(sceneryPath))
+            if (Directory.Exists(modelLib) ||
+                Directory.Exists(Path.Combine(addonRoot, "scenery")))
                 return AddonType.Library;
 
+            // 5. UNKNOWN
             return AddonType.Unknown;
         }
     }
