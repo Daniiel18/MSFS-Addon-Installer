@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+﻿using MSFS.AddonInstaller.Models;
 
 namespace MSFS.AddonInstaller.Utils
 {
@@ -6,26 +6,34 @@ namespace MSFS.AddonInstaller.Utils
     {
         public static void CopyDirectory(
             string sourceDir,
-            string targetDir)
+            string targetDir,
+            Action<InstallProgress> progressCallback)
         {
+            var progress = new InstallProgress
+            {
+                TotalBytes = 0,
+                CopiedBytes = 0,
+                Elapsed = TimeSpan.Zero
+            };
+
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
             foreach (var file in EnumerateFiles(sourceDir))
             {
-                var relativePath =
-                    Path.GetRelativePath(sourceDir, file);
+                var fileInfo = new FileInfo(file);
+                progress.TotalBytes += fileInfo.Length;
 
-                var destinationFile =
-                    Path.Combine(targetDir, relativePath);
+                var relativePath = Path.GetRelativePath(sourceDir, file);
+                var destinationFile = Path.Combine(targetDir, relativePath);
 
-                Directory.CreateDirectory(
-                    Path.GetDirectoryName(destinationFile)!
-                );
+                Directory.CreateDirectory(Path.GetDirectoryName(destinationFile)!);
 
                 using var sourceStream = new FileStream(
                     file,
                     FileMode.Open,
                     FileAccess.Read,
                     FileShare.Read,
-                    bufferSize: 1024 * 1024,
+                    1024 * 1024,
                     FileOptions.SequentialScan
                 );
 
@@ -34,10 +42,21 @@ namespace MSFS.AddonInstaller.Utils
                     FileMode.Create,
                     FileAccess.Write,
                     FileShare.None,
-                    bufferSize: 1024 * 1024
+                    1024 * 1024
                 );
 
-                sourceStream.CopyTo(destinationStream);
+                var buffer = new byte[1024 * 1024];
+                int bytesRead;
+
+                while ((bytesRead = sourceStream.Read(buffer, 0, buffer.Length)) > 0)
+                {
+                    destinationStream.Write(buffer, 0, bytesRead);
+
+                    progress.CopiedBytes += bytesRead;
+                    progress.Elapsed = stopwatch.Elapsed;
+
+                    progressCallback(progress);
+                }
             }
         }
 

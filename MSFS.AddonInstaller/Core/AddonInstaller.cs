@@ -5,211 +5,96 @@ namespace MSFS.AddonInstaller.Core
 {
     public static class AddonInstaller
     {
-        public static IReadOnlyList<InstallResult> Install(
-            Addon addon,
-            string communityPath)
+        public static InstallResult? Install(Addon addon, string communityPath)
         {
-            var results = new List<InstallResult>();
+            var addonStopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+            string sourcePath = addon.SourcePath;
+            InstallProgress? lastProgress = null;
 
             // ============================
-            // CASE 1: ARCHIVE
+            // CASE 1: ARCHIVE (STREAMING)
             // ============================
-            if (addon.IsArchive)
+            if (!addon.IsDirectory)
             {
-                var extractedRoot =
-                    ArchiveExtractor.ExtractToTemp(addon.SourcePath);
+                Console.WriteLine("   Installing...");
 
-                var addonRoots =
-                    AddonContentResolver.ResolveAddonRoots(extractedRoot);
+                var result = ArchiveExtractor.InstallFromArchiveStreaming(
+                    addon.SourcePath,
+                    communityPath,
+                    progress =>
+                    {
+                        lastProgress = progress;
+                        DrawProgressBar(progress);
+                    }
+                );
 
-                if (addonRoots.Count == 0)
-                {
-                    Logger.Info($"No addon roots found in archive '{addon.Name}'");
-                }
+                Console.WriteLine();
+                Console.WriteLine(
+                    $"Installation completed in {result.Duration:mm\\:ss}"
+                );
+                Console.WriteLine();
 
-                if (addonRoots.Count > 1)
-                {
-                    DrawAttentionBlock(addon.Name, addonRoots);
-                }
-
-                foreach (var root in addonRoots)
-                {
-                    var result = InstallSingleAddon(root, communityPath);
-                    results.Add(result);
-                }
-
-                Directory.Delete(extractedRoot, true);
-                return results;
+                return result;
             }
 
             // ============================
             // CASE 2: DIRECTORY
             // ============================
-            var roots =
-                AddonContentResolver.ResolveAddonRoots(addon.SourcePath);
+            addon.Type = AddonTypeDetector.Detect(sourcePath);
 
-            if (roots.Count > 1)
-            {
-                DrawAttentionBlock(addon.Name, roots);
-            }
+            var targetPath = Path.Combine(
+                communityPath,
+                Path.GetFileName(sourcePath)
+            );
 
-            foreach (var root in roots)
-            {
-                var result = InstallSingleAddon(root, communityPath);
-                results.Add(result);
-            }
-
-            return results;
-        }
-
-        // ==================================================
-        // INSTALL A SINGLE ADDON ROOT
-        // ==================================================
-        private static InstallResult InstallSingleAddon(
-            string sourcePath,
-            string communityPath)
-        {
-            bool isUpdate = false;
-
-            var addonName = Path.GetFileName(sourcePath);
-            var targetPath = Path.Combine(communityPath, addonName);
-
-            // ----------------------------
-            // EXISTING ADDON
-            // ----------------------------
             if (Directory.Exists(targetPath))
             {
-                var comparison = AddonComparer.Compare(sourcePath, targetPath);
-
-                switch (comparison)
-                {
-                    case AddonComparisonResult.SameVersion:
-                        Logger.Info($"Skipped '{addonName}' (same version)");
-                        return new InstallResult
-                        {
-                            Name = addonName,
-                            Status = InstallStatus.SkippedSameVersion,
-                            SizeBytes = 0,
-                            Duration = TimeSpan.Zero
-                        };
-
-                    case AddonComparisonResult.Downgrade:
-                        Logger.Info($"Skipped '{addonName}' (installed version is newer)");
-                        return new InstallResult
-                        {
-                            Name = addonName,
-                            Status = InstallStatus.SkippedNewerInstalled,
-                            SizeBytes = 0,
-                            Duration = TimeSpan.Zero
-                        };
-
-                    case AddonComparisonResult.UpdateAvailable:
-                        Logger.Info($"Updating '{addonName}' to newer version");
-                        Directory.Delete(targetPath, true);
-                        isUpdate = true;
-                        break;
-
-                    case AddonComparisonResult.DifferentAddon:
-                        throw new InvalidOperationException(
-                            $"Addon '{addonName}' conflicts with existing content."
-                        );
-                }
+                Console.WriteLine("   Already installed - skipped.");
+                return null;
             }
 
-            // ----------------------------
-            // INSTALL / UPDATE
-            // ----------------------------
-            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            Console.WriteLine($"   {addon.Type}");
 
-            FileCopyHelper.CopyDirectory(sourcePath, targetPath);
+            FileCopyHelper.CopyDirectory(
+                sourcePath,
+                targetPath,
+                progress =>
+                {
+                    lastProgress = progress;
+                    DrawProgressBar(progress);
+                }
+            );
 
-            stopwatch.Stop();
+            addonStopwatch.Stop();
 
-            long sizeBytes = Directory
-                .EnumerateFiles(targetPath, "*", SearchOption.AllDirectories)
-                .Sum(f => new FileInfo(f).Length);
+            Console.WriteLine();
+            Console.WriteLine(
+                $"Installation completed in {addonStopwatch.Elapsed:mm\\:ss}"
+            );
+            Console.WriteLine();
 
             return new InstallResult
             {
-                Name = addonName,
-                Status = isUpdate
-        ? InstallStatus.Updated
-        : InstallStatus.Installed,
-                SizeBytes = sizeBytes,
-                Duration = stopwatch.Elapsed
+                Name = Path.GetFileName(sourcePath),
+                SizeBytes = lastProgress?.TotalBytes ?? 0,
+                Duration = addonStopwatch.Elapsed
             };
         }
 
-        // ==================================================
-        // UI HELPERS
-        // ==================================================
-        private static void DrawAttentionBlock(
-            string containerName,
-            IReadOnlyList<string> addonRoots)
+        private static void DrawProgressBar(InstallProgress progress)
         {
-            Console.ForegroundColor = ConsoleColor.Yellow;
+            const int barWidth = 25;
 
-            DrawInlineHeader(
-                $"ATTENTION! Multiple add-ons detected in: {containerName}"
-            );
+            var filledBars =
+                progress.TotalBytes == 0
+                    ? 0
+                    : (int)(progress.Percentage / 100 * barWidth);
 
-            Console.WriteLine();
+            var bar = new string('#', filledBars).PadRight(barWidth, '-');
 
-            var names = addonRoots
-            .Select(Path.GetFileName)
-            .Where(n => !string.IsNullOrWhiteSpace(n))
-            .Select(n => n!) // <- afirmamos null-safety aquí
-            .ToList();
-
-            WriteEnumeratedColumns(names);
-
-            Console.ResetColor();
-            Console.WriteLine();
-        }
-
-        private static void WriteEnumeratedColumns(
-            IReadOnlyList<string> items,
-            int padding = 6)
-        {
-            if (items.Count == 0)
-                return;
-
-            int consoleWidth = Console.WindowWidth - 1;
-
-            var numberedItems = items
-                .Select((item, index) => $"{index + 1}. {item}")
-                .ToList();
-
-            int maxItemLength = numberedItems.Max(i => i.Length) + padding;
-            int columns = Math.Max(1, consoleWidth / maxItemLength);
-            int rows = (int)Math.Ceiling(numberedItems.Count / (double)columns);
-
-            for (int r = 0; r < rows; r++)
-            {
-                for (int c = 0; c < columns; c++)
-                {
-                    int index = r + (c * rows);
-                    if (index >= numberedItems.Count)
-                        continue;
-
-                    Console.Write(
-                        numberedItems[index].PadRight(maxItemLength)
-                    );
-                }
-                Console.WriteLine();
-            }
-        }
-
-        private static void DrawInlineHeader(string text)
-        {
-            int width = Console.WindowWidth - 1;
-
-            var line = $"── {text} ";
-
-            if (line.Length < width)
-                line += new string('─', width - line.Length);
-
-            Console.WriteLine(line);
+            Console.CursorLeft = 3;
+            Console.Write($"{bar} {progress.Percentage:0}%");
         }
     }
 }
