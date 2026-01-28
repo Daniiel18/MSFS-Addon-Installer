@@ -1,22 +1,31 @@
-﻿namespace MSFS.AddonInstaller.Utils
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+
+namespace MSFS.AddonInstaller.Core
 {
     public static class AddonContentResolver
     {
-        public static string ResolveAddonRoot(string extractedPath)
+        public static IReadOnlyList<string> ResolveAddonRoots(string rootPath)
         {
-            var directories = Directory.GetDirectories(extractedPath);
+            var results = new List<string>();
 
-            // Caso común: un solo folder en la raíz
-            if (directories.Length == 1 && !HasAddonFiles(extractedPath))
-                return directories[0];
+            foreach (var dir in Directory.EnumerateDirectories(
+                rootPath,
+                "*",
+                SearchOption.AllDirectories))
+            {
+                var manifest = Path.Combine(dir, "manifest.json");
+                var layout = Path.Combine(dir, "layout.json");
 
-            return extractedPath;
-        }
+                if (File.Exists(manifest) && File.Exists(layout))
+                {
+                    results.Add(dir);
+                }
+            }
 
-        private static bool HasAddonFiles(string path)
-        {
-            return File.Exists(Path.Combine(path, "layout.json")) ||
-                   File.Exists(Path.Combine(path, "manifest.json"));
+            return results;
         }
     }
 }
